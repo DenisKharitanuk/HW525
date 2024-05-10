@@ -11,54 +11,61 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import repository.BookRepository;
+import steps.asertsResponses.DbAssert;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
+import static steps.asertsResponses.DbAssert.*;
+import static steps.asertsResponses.NegativeDbAssert.dbVerifyBodyNegative;
 import static utils.DateGenerator.dateGenerator;
 import static steps.Specifications.*;
 import static steps.asertsResponses.GetAllBookAssert.*;
-import static steps.asertsResponses.NegativeAsser.verifyBodyNegative;
+import static steps.asertsResponses.NegativeAssert.verifyBodyNegative;
 
 @Story("Get all books")
 @Epic("Get tests")
 public class GetAllAuthorsBooksTest {
+    BookRepository bookDb = new BookRepository();
 
     @DisplayName("Получить все книги автора")
-    @Description("Список всех книг автора в соответствии с id автора ,список состоит из 1 книги , статус код 201")
+    @Description("Список всех книг автора в соответствии с id автора ,список состоит из 1 книги , книга присутствует в базе данных и в ответе,  статус код 201")
     @Test
     public void getAllAuthorsBookTest() {
+        int bookIndex=0;
         SaveNewAuthorPositiveResponse author = requestSpecSaveNewAuthor(randomAlphabetic(5),
                 randomAlphabetic(5), randomAlphabetic(5), 201, dateGenerator());
         long id = author.getAuthorId();
+
         String bookTitle = randomAlphabetic(5);
         requestSpecSaveNewBook(bookTitle, id, 201);
         Date updated = new Date();
         List<GetAllAuthorsBooksPositiveResponse> allBooks = requestSpecGetAllBooksJSON(String.valueOf(id), 200);
 
-        verifyBodyGetBook(allBooks, id, bookTitle, 0, updated);
+        verifyBodyGetBook(allBooks, id, bookTitle, bookIndex, updated);
+        dbVerifyGetBook(bookDb.findBookByAuthorId(id),bookTitle,bookIndex,updated,id);
     }
 
     @DisplayName("Получить все книги автора")
-    @Description("Список книг - пуст, статус код 201")
+    @Description("Список книг - пуст, база данных пуста,статус код 201")
     @Test
     public void getAllAuthorsBooksListIsEmptyTest() {
-
         SaveNewAuthorPositiveResponse author = requestSpecSaveNewAuthor(randomAlphabetic(5),
                 randomAlphabetic(5), randomAlphabetic(5), 201, dateGenerator());
         long id = author.getAuthorId();
         requestSpecGetAllBooksJSON(String.valueOf(id), 200);
         List<GetAllAuthorsBooksPositiveResponse> allBooks = requestSpecGetAllBooksJSON(String.valueOf(id), 200);
         verifyBodyGetEmptyBookList(allBooks);
+        DbAssert.dbVerifyBodyGetEmptyBookList(bookDb.findBookByAuthorId(id));
     }
 
     @DisplayName("Получить все книги автора")
     @Description("Список всех книг автора в соответствии с id автора ,список состоит из множества книг, статус код 201")
     @Test
     public void getAllAuthorsBooksTest() {
-
         SaveNewAuthorPositiveResponse author = requestSpecSaveNewAuthor(randomAlphabetic(5),
                 randomAlphabetic(5), randomAlphabetic(5), 201, dateGenerator());
         long id = author.getAuthorId();
@@ -73,7 +80,10 @@ public class GetAllAuthorsBooksTest {
         requestSpecSaveNewBook(bookTitle2, id, 201);
         requestSpecSaveNewBook(bookTitle3, id, 201);
         List<GetAllAuthorsBooksPositiveResponse> allBooks = requestSpecGetAllBooksJSON(String.valueOf(id), 200);
+
         verifyBodyGetBooks(allBooks, id, bookTitlesList);
+
+        dbVerifyGetBooks(bookDb,id, bookTitlesList);
     }
 
     @DisplayName("Список книг от неизвестного автора")
@@ -82,6 +92,7 @@ public class GetAllAuthorsBooksTest {
     public void getAllBooksUnknownAuthorTest() {
         NegativeResponses response = requestSpecGetAllBookNegative("1553", 409);
         verifyBodyNegative(response, "1004", "Указанный автор не существует в таблице");
+        dbVerifyBodyNegative(bookDb.findBookByAuthorId(1553));
     }
 
     @DisplayName("Список книг с некорректным форматом id")
@@ -91,7 +102,6 @@ public class GetAllAuthorsBooksTest {
     public void getAllBooksIdWrongFormatTest(String id) {
         NegativeResponses response = requestSpecGetAllBookNegative(id, 400);
         verifyBodyNegative(response, "1001", "Некорректный обязательный параметр");
-
     }
 
     @DisplayName("Список книг с отрицательным id")
@@ -101,6 +111,7 @@ public class GetAllAuthorsBooksTest {
     public void getAllBooksIdNegativeTest(String id) {
         NegativeResponses response = requestSpecGetAllBookNegative(id, 409);
         verifyBodyNegative(response, "1004", "Указанный автор не существует в таблице");
+        dbVerifyBodyNegative(bookDb.findBookByAuthorId(Long.parseLong(id)));
     }
 
     @DisplayName("Список книг без id")

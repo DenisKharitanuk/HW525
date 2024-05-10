@@ -12,14 +12,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class GetAllBookAssert {
     public static void verifyBodyGetBook(List<GetAllAuthorsBooksPositiveResponse> allBooks, long id, String bookTitle, int bookIndex, Date updated) {
-
         assertEquals(allBooks.get(bookIndex).getBookTitle(), bookTitle);
         assertEquals(allBooks.get(bookIndex).getAuthor().getId(), id);
+
         Date date = allBooks.get(bookIndex).getUpdated();
-
-        TimeZone.setDefault(TimeZone.getTimeZone("GMT"));
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
-
         assertEquals(format.format(updated), format.format(date));
     }
 

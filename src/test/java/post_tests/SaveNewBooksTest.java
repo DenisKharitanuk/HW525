@@ -11,28 +11,38 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import steps.asertsResponses.SaveBookAssert;
+import repository.BookRepository;
 
 import static org.apache.commons.lang3.RandomStringUtils.randomAlphabetic;
 import static steps.Specifications.*;
-import static steps.asertsResponses.NegativeAsser.verifyBodyNegative;
+import static steps.asertsResponses.DbAssert.dbBookVerification;
+import static steps.asertsResponses.NegativeAssert.verifyBodyNegative;
+import static steps.asertsResponses.NegativeDbAssert.dbVerifyBodyNegative;
+import static steps.asertsResponses.SaveBookAssert.verifyBodySaveBook;
 import static utils.DateGenerator.dateGenerator;
 
 @Epic("PostTests")
 @Story("saveNewBook")
 public class SaveNewBooksTest {
 
+    BookRepository bookDB = new BookRepository();
+
+
     @DisplayName("Сохранение книги ")
-    @Description("Книга сохранена , ответ содержит id сохраненной  книги , статус код 201")
+    @Description("Книга сохранена в базе данных , ответ содержит id сохраненной  книги , книга с id присутствует в базе данных, статус код 201")
     @Test
     public void saveBookTest() {
         SaveNewAuthorPositiveResponse author = requestSpecSaveNewAuthor(randomAlphabetic(5),
                 randomAlphabetic(5), randomAlphabetic(5), 201, dateGenerator());
         long id = author.getAuthorId();
+
         String bookTitle = randomAlphabetic(5);
         SaveNewBooksPositiveResponse book = requestSpecSaveNewBook(bookTitle, id, 201);
+
         long bookId = book.getBookId();
-        SaveBookAssert.verifyBodySaveBook(book, bookId);
+        verifyBodySaveBook(book, bookId);
+
+        dbBookVerification(bookId, bookDB.findBookById(bookId));
     }
 
 
@@ -40,17 +50,20 @@ public class SaveNewBooksTest {
     @Description("Книга не сохранена , статус код 409, ошибка 1004")
     @Test
     public void saveBookUnknownAuthorTest() {
-        NegativeResponses response = requestSpecSaveNewBookNegative(randomAlphabetic(5), 666, 409);
+        long authorId = 666;
+        NegativeResponses response = requestSpecSaveNewBookNegative(randomAlphabetic(5), authorId, 409);
         verifyBodyNegative(response, "1004", "Указанный автор не существует в таблице");
+        dbVerifyBodyNegative(bookDB.findBookByAuthorId(authorId));
     }
 
     @DisplayName("Сохранение книги с отрицательным id автора")
     @Description("Книга не сохранена , статус код 409, ошибка 1004")
     @ParameterizedTest(name = "id = {0}")
     @ValueSource(longs = {-1, -2,})
-    public void saveBookNegativeId(long id) {
-        NegativeResponses response = requestSpecSaveNewBookNegative(randomAlphabetic(5), id, 409);
+    public void saveBookNegativeId(long authorId) {
+        NegativeResponses response = requestSpecSaveNewBookNegative(randomAlphabetic(5), (authorId), 409);
         verifyBodyNegative(response, "1004", "Указанный автор не существует в таблице");
+        dbVerifyBodyNegative(bookDB.findBookByAuthorId(authorId));
     }
 
     @DisplayName("Сохранение книги с пустым полем bookTitle")
@@ -59,7 +72,8 @@ public class SaveNewBooksTest {
     @NullSource
     public void saveBookNullTitle(String bookTitle) {
         NegativeResponses response = requestSpecSaveNewBookNegative(bookTitle, 1, 400);
-        verifyBodyNegative(response, "Валидация не пройдена", "Не передан обязательный параметр: bookTitle");
+        verifyBodyNegative(response, "1001", "Не передан обязательный параметр: bookTitle");
+        dbVerifyBodyNegative(bookDB.findBookByTitle(null));
     }
 }
 

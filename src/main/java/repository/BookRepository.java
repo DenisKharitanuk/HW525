@@ -35,6 +35,17 @@ public class BookRepository {
         return query.getResultList();
     }
 
+    public List<Book> findBookById(long id) {
+        final String hql = """
+                SELECT * FROM book where id = :id
+                """;
+
+        NativeQuery<Book> query = session.createNativeQuery(hql, Book.class);
+        query.setParameter("id", id);
+        return query.getResultList();
+    }
+
+
     public List<Book> findBookByAuthorId(long id) {
         final String hql = """
                 SELECT * FROM book where author_id = :id
